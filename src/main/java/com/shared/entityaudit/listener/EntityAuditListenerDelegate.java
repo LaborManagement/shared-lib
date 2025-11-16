@@ -67,7 +67,12 @@ public class EntityAuditListenerDelegate {
         log.info("Recording entity audit: type={}, id={}, action={}, old={}, new={}",
                 request.getEntityType(), request.getEntityId(), action, request.getOldValues(), request.getNewValues());
 
-        entityAuditHelper.recordChange(request);
+        try {
+            entityAuditHelper.recordChange(request);
+        } catch (RuntimeException ex) {
+            log.error("Failed to persist entity audit event for type={}, id={}, action={}. Continuing without audit entry.",
+                    request.getEntityType(), request.getEntityId(), action, ex);
+        }
     }
 
     private String resolveEntityType(EntityAuditDescriptor descriptor, Object entity) {

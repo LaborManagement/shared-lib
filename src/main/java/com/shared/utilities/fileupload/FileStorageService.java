@@ -1,13 +1,25 @@
 package com.shared.utilities.fileupload;
 
-import org.springframework.web.multipart.MultipartFile;
-import java.io.*;
-import java.nio.file.*;
-import java.security.*;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+
 import org.slf4j.Logger;
+import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.shared.utilities.logger.LoggerFactoryProvider;
 
+@Component
 public class FileStorageService {
     private static final Logger log = LoggerFactoryProvider.getLogger(FileStorageService.class);
 
@@ -31,9 +43,10 @@ public class FileStorageService {
         }
 
         try (InputStream inputStream = file.getInputStream();
-             DigestInputStream digestInputStream = new DigestInputStream(inputStream, digest);
-             OutputStream outputStream = new BufferedOutputStream(
-                 Files.newOutputStream(destinationPath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))) {
+                DigestInputStream digestInputStream = new DigestInputStream(inputStream, digest);
+                OutputStream outputStream = new BufferedOutputStream(
+                        Files.newOutputStream(destinationPath, StandardOpenOption.CREATE,
+                                StandardOpenOption.TRUNCATE_EXISTING))) {
 
             byte[] buffer = new byte[8192];
             int bytesRead;
@@ -55,6 +68,12 @@ public class FileStorageService {
         metadata.setFileType(category);
         metadata.setUploadDate(java.time.LocalDateTime.now());
         return metadata;
+    }
+
+    public void deleteFileByPath(String path) throws IOException {
+        if (path == null || path.isBlank())
+            return;
+        Files.deleteIfExists(Path.of(path));
     }
 
     String getBaseUploadDir() {
