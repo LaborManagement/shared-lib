@@ -22,11 +22,15 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.net.URI;
 
@@ -48,10 +52,12 @@ public class SecurityAutoConfiguration {
                                                    JwtAuthenticationFilter jwtAuthenticationFilter,
                                                    ObjectProvider<RLSContextFilter> rlsContextFilterProvider,
                                                    SharedLibConfigurationProperties sharedLibProperties,
+                                                   @Qualifier("sharedLibCorsConfigurationSource") ObjectProvider<CorsConfigurationSource> corsConfigurationSourceProvider,
                                                    ObjectProvider<DynamicEndpointAuthorizationManager> dynamicManagerProvider) throws Exception {
         applyDynamicRbacDefaults(sharedLibProperties.getSecurity());
         String[] permittedPaths = sharedLibProperties.getSecurity().getPermittedPaths();
         boolean dynamicEnabled = sharedLibProperties.getSecurity().getDynamicRbac().isEnabled();
+        SecurityProperties securityProps = sharedLibProperties.getSecurity();
 
         http
             .csrf(csrf -> csrf.disable())
@@ -70,6 +76,13 @@ public class SecurityAutoConfiguration {
                 }
             })
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        CorsConfigurationSource corsConfigurationSource = corsConfigurationSourceProvider.getIfAvailable();
+        if (securityProps.getCors() != null && securityProps.getCors().isEnabled() && corsConfigurationSource != null) {
+            http.cors(cors -> cors.configurationSource(corsConfigurationSource));
+        } else {
+            http.cors(AbstractHttpConfigurer::disable);
+        }
         
         // Add RLS context filter after JWT authentication so user context is available
         RLSContextFilter rlsContextFilter = rlsContextFilterProvider.getIfAvailable();
@@ -150,6 +163,25 @@ public class SecurityAutoConfiguration {
             policyEvaluationClientProvider.getIfAvailable(),
             properties.getSecurity().getDynamicRbac()
         );
+    }
+
+    @Bean(name = "sharedLibCorsConfigurationSource")
+    @ConditionalOnProperty(prefix = "shared-lib.security.cors", name = "enabled", havingValue = "true")
+    public CorsConfigurationSource sharedLibCorsConfigurationSource(SharedLibConfigurationProperties properties) {
+        SecurityProperties.CorsProperties cors = properties.getSecurity().getCors();
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(cors.getAllowedOrigins());
+        configuration.setAllowedMethods(cors.getAllowedMethods());
+        configuration.setAllowedHeaders(cors.getAllowedHeaders());
+        configuration.setExposedHeaders(cors.getExposedHeaders());
+        configuration.setAllowCredentials(cors.isAllowCredentials());
+        if (cors.getMaxAge() != null) {
+            configuration.setMaxAge(cors.getMaxAge().getSeconds());
+        }
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     private void applyDynamicRbacDefaults(SecurityProperties securityProperties) {
