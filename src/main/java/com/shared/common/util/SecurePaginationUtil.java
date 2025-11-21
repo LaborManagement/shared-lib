@@ -103,6 +103,13 @@ public class SecurePaginationUtil {
         if (request.getSize() > MAX_PAGE_SIZE) {
             result.addError("Page size cannot exceed " + MAX_PAGE_SIZE);
         }
+
+        // Validate optional fileId filter
+        if (request.getFileId() != null && !request.getFileId().trim().isEmpty()) {
+            if (!request.getFileId().trim().matches("\\d+")) {
+                result.addError("fileId must be a numeric value");
+            }
+        }
         
         // Validate sort direction
         if (request.getSortDir() != null && 
