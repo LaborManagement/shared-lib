@@ -1,8 +1,7 @@
 package com.shared.security.rls;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,16 +22,10 @@ import org.springframework.stereotype.Component;
  *   - Context is automatically cleared when the transaction commits/rolls back
  *   - Works with Spring @Transactional and HikariCP connection pooling
  */
-@Slf4j
 @Component
 public class RLSContextManager {
 
-    private static final String SET_CONTEXT_FUNCTION = "SELECT auth.set_user_context(?)";
-    private static final String GET_CONTEXT_FUNCTION = "SELECT auth.get_user_context()";
-    private static final String CLEAR_CONTEXT_FUNCTION = "SELECT auth.clear_user_context()";
-
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private static final Logger log = LoggerFactory.getLogger(RLSContextManager.class);
 
     /**
      * Sets the RLS context for the current user in the current transaction.
@@ -48,15 +41,8 @@ public class RLSContextManager {
         if (userId == null || userId.trim().isEmpty()) {
             throw new IllegalArgumentException("User ID cannot be null or empty");
         }
-        
-        try {
-            log.debug("Setting RLS context for user: {}", userId);
-            jdbcTemplate.queryForObject(SET_CONTEXT_FUNCTION, new Object[]{userId}, String.class);
-            log.debug("RLS context set successfully for user: {}", userId);
-        } catch (Exception e) {
-            log.error("Failed to set RLS context for user: {}", userId, e);
-            throw new RuntimeException("Failed to set RLS context: " + e.getMessage(), e);
-        }
+        TenantContext.setTenantId(userId);
+        log.debug("RLSContextManager stored tenant/user id {}", userId);
     }
 
     /**
@@ -67,14 +53,7 @@ public class RLSContextManager {
      * @return the current user ID in the RLS context, or null if not set
      */
     public String getContext() {
-        try {
-            String userId = jdbcTemplate.queryForObject(GET_CONTEXT_FUNCTION, String.class);
-            log.debug("Retrieved RLS context: {}", userId);
-            return userId;
-        } catch (Exception e) {
-            log.warn("Failed to retrieve RLS context", e);
-            return null;
-        }
+        return TenantContext.getTenantId();
     }
 
     /**
@@ -86,14 +65,7 @@ public class RLSContextManager {
      * @throws Exception if the database call fails
      */
     public void clearContext() {
-        try {
-            log.debug("Clearing RLS context");
-            jdbcTemplate.queryForObject(CLEAR_CONTEXT_FUNCTION, String.class);
-            log.debug("RLS context cleared successfully");
-        } catch (Exception e) {
-            log.warn("Failed to clear RLS context", e);
-            // Don't throw; clearing is best-effort
-        }
+        TenantContext.clear();
     }
 
     /**
