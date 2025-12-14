@@ -16,18 +16,15 @@ public final class AuthorizationMatrix {
     private final Long userId;
     private final Integer permissionVersion;
     private final Set<String> roles;
-    private final Set<String> capabilities;
 
     @JsonCreator
     public AuthorizationMatrix(
             @JsonProperty("userId") Long userId,
             @JsonProperty("permissionVersion") Integer permissionVersion,
-            @JsonProperty("roles") Set<String> roles,
-            @JsonProperty("capabilities") Set<String> capabilities) {
+            @JsonProperty("roles") Set<String> roles) {
         this.userId = userId;
         this.permissionVersion = permissionVersion;
         this.roles = roles != null ? Collections.unmodifiableSet(new HashSet<>(roles)) : Set.of();
-        this.capabilities = capabilities != null ? Collections.unmodifiableSet(new HashSet<>(capabilities)) : Set.of();
     }
 
     public Long getUserId() {
@@ -42,17 +39,12 @@ public final class AuthorizationMatrix {
         return roles;
     }
 
-    public Set<String> getCapabilities() {
-        return capabilities;
-    }
-
     @Override
     public String toString() {
         return "AuthorizationMatrix{" +
             "userId=" + userId +
             ", permissionVersion=" + permissionVersion +
             ", roles=" + roles +
-            ", capabilities=" + capabilities +
             '}';
     }
 
@@ -66,12 +58,11 @@ public final class AuthorizationMatrix {
         }
         return Objects.equals(userId, that.userId)
             && Objects.equals(permissionVersion, that.permissionVersion)
-            && Objects.equals(roles, that.roles)
-            && Objects.equals(capabilities, that.capabilities);
+            && Objects.equals(roles, that.roles);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(userId, permissionVersion, roles, capabilities);
+        return Objects.hash(userId, permissionVersion, roles);
     }
 }

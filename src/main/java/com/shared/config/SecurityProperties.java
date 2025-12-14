@@ -182,10 +182,10 @@ public class SecurityProperties {
         private boolean forwardAuthorizationHeader = true;
         private String apiKeyHeader = "X-Internal-Api-Key";
         private String apiKey;
-        private java.time.Duration matrixCacheTtl = java.time.Duration.ofSeconds(5);
-        private java.time.Duration metadataCacheTtl = java.time.Duration.ofSeconds(30);
-        private java.time.Duration connectTimeout = java.time.Duration.ofSeconds(2);
-        private java.time.Duration readTimeout = java.time.Duration.ofSeconds(2);
+        private java.time.Duration matrixCacheTtl = java.time.Duration.ofSeconds(60);
+        private java.time.Duration metadataCacheTtl = java.time.Duration.ofSeconds(300);
+        private java.time.Duration connectTimeout = java.time.Duration.ofSeconds(5);
+        private java.time.Duration readTimeout = java.time.Duration.ofSeconds(5);
         private boolean failOpen = false;
 
         public boolean isEnabled() {

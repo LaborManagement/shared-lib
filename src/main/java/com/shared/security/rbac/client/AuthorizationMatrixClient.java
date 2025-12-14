@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AuthorizationMatrixClient {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthorizationMatrixClient.class);
+    private static final Duration NEGATIVE_CACHE_TTL = Duration.ofSeconds(5);
 
     private final RestTemplate restTemplate;
     private final SecurityProperties.DynamicRbacProperties properties;
@@ -51,7 +52,7 @@ public class AuthorizationMatrixClient {
         String cacheKey = buildCacheKey(userId, permissionVersion);
         CachedEntry<AuthorizationMatrix> entry = cache.get(cacheKey);
         if (entry != null && !entry.isExpired()) {
-            return Optional.of(entry.value());
+            return Optional.ofNullable(entry.value());
         }
 
         try {
@@ -71,6 +72,7 @@ public class AuthorizationMatrixClient {
             logger.error("Matrix fetch failed for user {}: {}", userId, ex.getMessage());
         }
 
+        cache.put(cacheKey, new CachedEntry<>(null, NEGATIVE_CACHE_TTL));
         return Optional.empty();
     }
 

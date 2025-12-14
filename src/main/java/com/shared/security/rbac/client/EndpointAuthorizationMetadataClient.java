@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class EndpointAuthorizationMetadataClient {
 
     private static final Logger logger = LoggerFactory.getLogger(EndpointAuthorizationMetadataClient.class);
+    private static final Duration NEGATIVE_CACHE_TTL = Duration.ofSeconds(5);
 
     private final RestTemplate restTemplate;
     private final SecurityProperties.DynamicRbacProperties properties;
@@ -48,7 +49,7 @@ public class EndpointAuthorizationMetadataClient {
         String cacheKey = httpMethod.toUpperCase() + ":" + requestPath;
         CachedEntry<EndpointAuthorizationMetadata> entry = cache.get(cacheKey);
         if (entry != null && !entry.isExpired()) {
-            return Optional.of(entry.value());
+            return Optional.ofNullable(entry.value());
         }
 
         try {
@@ -78,6 +79,7 @@ public class EndpointAuthorizationMetadataClient {
             logger.error("Endpoint metadata fetch failed for {} {}: {}", httpMethod, requestPath, ex.getMessage());
         }
 
+        cache.put(cacheKey, new CachedEntry<>(null, NEGATIVE_CACHE_TTL));
         return Optional.empty();
     }
 
