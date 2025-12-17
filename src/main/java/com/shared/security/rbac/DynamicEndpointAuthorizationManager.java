@@ -16,7 +16,6 @@ import org.springframework.security.web.access.intercept.RequestAuthorizationCon
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -90,15 +89,8 @@ public class DynamicEndpointAuthorizationManager implements AuthorizationManager
             return new AuthorizationDecision(false);
         }
 
-        Set<String> requiredCapabilities = metadata.getRequiredCapabilities();
         boolean allowed;
-        if (!requiredCapabilities.isEmpty()) {
-            allowed = requiredCapabilities.stream().anyMatch(matrix.getCapabilities()::contains);
-            if (!allowed) {
-                logger.debug("Denied {} {} for user {} - missing capabilities {} (has {})",
-                    method, path, userId, requiredCapabilities, matrix.getCapabilities());
-            }
-        } else if (properties.isPolicyEvaluationEnabled() && policyEvaluationClient != null) {
+        if (properties.isPolicyEvaluationEnabled() && policyEvaluationClient != null) {
             Optional<Boolean> decision = policyEvaluationClient.evaluate(metadata.getEndpointId(), matrix.getRoles());
             if (decision.isEmpty()) {
                 return decisionOnError("Policy evaluation failed for endpoint " + metadata.getEndpointId());

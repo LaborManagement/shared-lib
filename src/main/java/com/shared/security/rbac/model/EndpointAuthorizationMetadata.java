@@ -17,22 +17,17 @@ public final class EndpointAuthorizationMetadata {
     private final Long endpointId;
     private final boolean hasPolicies;
     private final Set<Long> policyIds;
-    private final Set<String> requiredCapabilities;
 
     @JsonCreator
     public EndpointAuthorizationMetadata(
             @JsonProperty("endpointFound") boolean endpointFound,
             @JsonProperty("endpointId") Long endpointId,
             @JsonProperty("hasPolicies") boolean hasPolicies,
-            @JsonProperty("policyIds") Set<Long> policyIds,
-            @JsonProperty("requiredCapabilities") Set<String> requiredCapabilities) {
+            @JsonProperty("policyIds") Set<Long> policyIds) {
         this.endpointFound = endpointFound;
         this.endpointId = endpointId;
         this.hasPolicies = hasPolicies;
         this.policyIds = policyIds != null ? Collections.unmodifiableSet(new HashSet<>(policyIds)) : Set.of();
-        this.requiredCapabilities = requiredCapabilities != null
-                ? Collections.unmodifiableSet(new HashSet<>(requiredCapabilities))
-                : Set.of();
     }
 
     public boolean isEndpointFound() {
@@ -51,10 +46,6 @@ public final class EndpointAuthorizationMetadata {
         return policyIds;
     }
 
-    public Set<String> getRequiredCapabilities() {
-        return requiredCapabilities;
-    }
-
     @Override
     public String toString() {
         return "EndpointAuthorizationMetadata{" +
@@ -62,7 +53,6 @@ public final class EndpointAuthorizationMetadata {
             ", endpointId=" + endpointId +
             ", hasPolicies=" + hasPolicies +
             ", policyIds=" + policyIds +
-            ", requiredCapabilities=" + requiredCapabilities +
             '}';
     }
 
@@ -77,12 +67,11 @@ public final class EndpointAuthorizationMetadata {
         return endpointFound == that.endpointFound
             && hasPolicies == that.hasPolicies
             && Objects.equals(endpointId, that.endpointId)
-            && Objects.equals(policyIds, that.policyIds)
-            && Objects.equals(requiredCapabilities, that.requiredCapabilities);
+            && Objects.equals(policyIds, that.policyIds);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(endpointFound, endpointId, hasPolicies, policyIds, requiredCapabilities);
+        return Objects.hash(endpointFound, endpointId, hasPolicies, policyIds);
     }
 }
