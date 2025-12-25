@@ -11,6 +11,8 @@ import com.shared.security.rbac.client.EndpointAuthorizationMetadataClient;
 import com.shared.security.rbac.client.PolicyEvaluationClient;
 import com.shared.security.rls.RLSContextFilter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -39,6 +41,8 @@ import java.net.URI;
 @ConditionalOnProperty(prefix = "shared-lib.security", name = "enabled", havingValue = "true")
 @EnableConfigurationProperties({SharedLibConfigurationProperties.class, JwtConfig.class})
 public class SecurityAutoConfiguration {
+
+    private static final Logger log = LoggerFactory.getLogger(SecurityAutoConfiguration.class);
 
     @Bean
     @ConditionalOnMissingBean
@@ -79,8 +83,17 @@ public class SecurityAutoConfiguration {
 
         CorsConfigurationSource corsConfigurationSource = corsConfigurationSourceProvider.getIfAvailable();
         if (securityProps.getCors() != null && securityProps.getCors().isEnabled() && corsConfigurationSource != null) {
+            log.info("shared-lib CORS enabled; origins={}, methods={}, headers={}, allowCredentials={}, maxAgeSeconds={}",
+                securityProps.getCors().getAllowedOrigins(),
+                securityProps.getCors().getAllowedMethods(),
+                securityProps.getCors().getAllowedHeaders(),
+                securityProps.getCors().isAllowCredentials(),
+                securityProps.getCors().getMaxAge() != null ? securityProps.getCors().getMaxAge().getSeconds() : null);
             http.cors(cors -> cors.configurationSource(corsConfigurationSource));
         } else {
+            log.info("shared-lib CORS disabled (enabledFlag={}, sourcePresent={})",
+                securityProps.getCors() != null && securityProps.getCors().isEnabled(),
+                corsConfigurationSource != null);
             http.cors(AbstractHttpConfigurer::disable);
         }
         
@@ -169,6 +182,13 @@ public class SecurityAutoConfiguration {
     @ConditionalOnProperty(prefix = "shared-lib.security.cors", name = "enabled", havingValue = "true")
     public CorsConfigurationSource sharedLibCorsConfigurationSource(SharedLibConfigurationProperties properties) {
         SecurityProperties.CorsProperties cors = properties.getSecurity().getCors();
+        log.info("Initializing shared-lib CORS configuration: origins={}, methods={}, headers={}, exposedHeaders={}, allowCredentials={}, maxAgeSeconds={}",
+            cors.getAllowedOrigins(),
+            cors.getAllowedMethods(),
+            cors.getAllowedHeaders(),
+            cors.getExposedHeaders(),
+            cors.isAllowCredentials(),
+            cors.getMaxAge() != null ? cors.getMaxAge().getSeconds() : null);
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(cors.getAllowedOrigins());
         configuration.setAllowedMethods(cors.getAllowedMethods());
