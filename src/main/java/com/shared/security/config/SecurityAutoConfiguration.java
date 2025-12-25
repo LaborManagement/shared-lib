@@ -53,6 +53,7 @@ public class SecurityAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(SecurityFilterChain.class)
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtAuthenticationFilter jwtAuthenticationFilter,
                                                    ObjectProvider<RLSContextFilter> rlsContextFilterProvider,
