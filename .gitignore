@@ -28,3 +28,4 @@ docker-compose*.yml
 
 # OS
 Thumbs.db
+.DS_Store

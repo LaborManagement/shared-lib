@@ -9,6 +9,7 @@ public class SecurityProperties {
     private String[] permittedPaths = {"/actuator/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"};
     private final IntrospectionProperties introspection = new IntrospectionProperties();
     private final DynamicRbacProperties dynamicRbac = new DynamicRbacProperties();
+    private final CorsProperties cors = new CorsProperties();
 
     public boolean isEnabled() {
         return enabled;
@@ -32,6 +33,10 @@ public class SecurityProperties {
 
     public DynamicRbacProperties getDynamicRbac() {
         return dynamicRbac;
+    }
+
+    public CorsProperties getCors() {
+        return cors;
     }
 
     public static class IntrospectionProperties {
@@ -100,6 +105,73 @@ public class SecurityProperties {
         }
     }
 
+    public static class CorsProperties {
+        private boolean enabled = false;
+        private java.util.List<String> allowedOrigins = new java.util.ArrayList<>();
+        private java.util.List<String> allowedMethods = java.util.Arrays.asList("GET", "POST", "PUT", "DELETE",
+                "OPTIONS", "PATCH");
+        private java.util.List<String> allowedHeaders = java.util.Arrays.asList("*");
+        private java.util.List<String> exposedHeaders = new java.util.ArrayList<>();
+        private boolean allowCredentials = true;
+        private java.time.Duration maxAge = java.time.Duration.ofHours(1);
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public java.util.List<String> getAllowedOrigins() {
+            return allowedOrigins;
+        }
+
+        public void setAllowedOrigins(java.util.List<String> allowedOrigins) {
+            this.allowedOrigins = allowedOrigins;
+        }
+
+        public java.util.List<String> getAllowedMethods() {
+            return allowedMethods;
+        }
+
+        public void setAllowedMethods(java.util.List<String> allowedMethods) {
+            this.allowedMethods = allowedMethods;
+        }
+
+        public java.util.List<String> getAllowedHeaders() {
+            return allowedHeaders;
+        }
+
+        public void setAllowedHeaders(java.util.List<String> allowedHeaders) {
+            this.allowedHeaders = allowedHeaders;
+        }
+
+        public java.util.List<String> getExposedHeaders() {
+            return exposedHeaders;
+        }
+
+        public void setExposedHeaders(java.util.List<String> exposedHeaders) {
+            this.exposedHeaders = exposedHeaders;
+        }
+
+        public boolean isAllowCredentials() {
+            return allowCredentials;
+        }
+
+        public void setAllowCredentials(boolean allowCredentials) {
+            this.allowCredentials = allowCredentials;
+        }
+
+        public java.time.Duration getMaxAge() {
+            return maxAge;
+        }
+
+        public void setMaxAge(java.time.Duration maxAge) {
+            this.maxAge = maxAge;
+        }
+    }
+
     public static class DynamicRbacProperties {
         private boolean enabled = false;
         private String baseUrl;
@@ -110,10 +182,10 @@ public class SecurityProperties {
         private boolean forwardAuthorizationHeader = true;
         private String apiKeyHeader = "X-Internal-Api-Key";
         private String apiKey;
-        private java.time.Duration matrixCacheTtl = java.time.Duration.ofSeconds(5);
-        private java.time.Duration metadataCacheTtl = java.time.Duration.ofSeconds(30);
-        private java.time.Duration connectTimeout = java.time.Duration.ofSeconds(2);
-        private java.time.Duration readTimeout = java.time.Duration.ofSeconds(2);
+        private java.time.Duration matrixCacheTtl = java.time.Duration.ofSeconds(60);
+        private java.time.Duration metadataCacheTtl = java.time.Duration.ofSeconds(300);
+        private java.time.Duration connectTimeout = java.time.Duration.ofSeconds(5);
+        private java.time.Duration readTimeout = java.time.Duration.ofSeconds(5);
         private boolean failOpen = false;
 
         public boolean isEnabled() {

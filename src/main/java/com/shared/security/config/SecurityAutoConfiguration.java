@@ -11,6 +11,8 @@ import com.shared.security.rbac.client.EndpointAuthorizationMetadataClient;
 import com.shared.security.rbac.client.PolicyEvaluationClient;
 import com.shared.security.rls.RLSContextFilter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -21,12 +23,17 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.net.URI;
 
@@ -36,6 +43,8 @@ import java.net.URI;
 @EnableConfigurationProperties({SharedLibConfigurationProperties.class, JwtConfig.class})
 public class SecurityAutoConfiguration {
 
+    private static final Logger log = LoggerFactory.getLogger(SecurityAutoConfiguration.class);
+
     @Bean
     @ConditionalOnMissingBean
     public JwtAuthenticationFilter jwtAuthenticationFilter(JwtConfig jwtConfig,
@@ -44,19 +53,23 @@ public class SecurityAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(SecurityFilterChain.class)
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtAuthenticationFilter jwtAuthenticationFilter,
                                                    ObjectProvider<RLSContextFilter> rlsContextFilterProvider,
                                                    SharedLibConfigurationProperties sharedLibProperties,
+                                                   @Qualifier("sharedLibCorsConfigurationSource") ObjectProvider<CorsConfigurationSource> corsConfigurationSourceProvider,
                                                    ObjectProvider<DynamicEndpointAuthorizationManager> dynamicManagerProvider) throws Exception {
         applyDynamicRbacDefaults(sharedLibProperties.getSecurity());
         String[] permittedPaths = sharedLibProperties.getSecurity().getPermittedPaths();
         boolean dynamicEnabled = sharedLibProperties.getSecurity().getDynamicRbac().isEnabled();
+        SecurityProperties securityProps = sharedLibProperties.getSecurity();
 
         http
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> {
+                auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
                 auth.requestMatchers(permittedPaths).permitAll();
                 if (dynamicEnabled) {
                     DynamicEndpointAuthorizationManager manager = dynamicManagerProvider.getIfAvailable();
@@ -70,6 +83,22 @@ public class SecurityAutoConfiguration {
                 }
             })
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        CorsConfigurationSource corsConfigurationSource = corsConfigurationSourceProvider.getIfAvailable();
+        if (securityProps.getCors() != null && securityProps.getCors().isEnabled() && corsConfigurationSource != null) {
+            log.info("shared-lib CORS enabled; origins={}, methods={}, headers={}, allowCredentials={}, maxAgeSeconds={}",
+                securityProps.getCors().getAllowedOrigins(),
+                securityProps.getCors().getAllowedMethods(),
+                securityProps.getCors().getAllowedHeaders(),
+                securityProps.getCors().isAllowCredentials(),
+                securityProps.getCors().getMaxAge() != null ? securityProps.getCors().getMaxAge().getSeconds() : null);
+            http.cors(cors -> cors.configurationSource(corsConfigurationSource));
+        } else {
+            log.info("shared-lib CORS disabled (enabledFlag={}, sourcePresent={})",
+                securityProps.getCors() != null && securityProps.getCors().isEnabled(),
+                corsConfigurationSource != null);
+            http.cors(AbstractHttpConfigurer::disable);
+        }
         
         // Add RLS context filter after JWT authentication so user context is available
         RLSContextFilter rlsContextFilter = rlsContextFilterProvider.getIfAvailable();
@@ -150,6 +179,32 @@ public class SecurityAutoConfiguration {
             policyEvaluationClientProvider.getIfAvailable(),
             properties.getSecurity().getDynamicRbac()
         );
+    }
+
+    @Bean(name = "sharedLibCorsConfigurationSource")
+    @ConditionalOnProperty(prefix = "shared-lib.security.cors", name = "enabled", havingValue = "true")
+    public CorsConfigurationSource sharedLibCorsConfigurationSource(SharedLibConfigurationProperties properties) {
+        SecurityProperties.CorsProperties cors = properties.getSecurity().getCors();
+        log.info("Initializing shared-lib CORS configuration: origins={}, methods={}, headers={}, exposedHeaders={}, allowCredentials={}, maxAgeSeconds={}",
+            cors.getAllowedOrigins(),
+            cors.getAllowedMethods(),
+            cors.getAllowedHeaders(),
+            cors.getExposedHeaders(),
+            cors.isAllowCredentials(),
+            cors.getMaxAge() != null ? cors.getMaxAge().getSeconds() : null);
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(cors.getAllowedOrigins());
+        configuration.setAllowedMethods(cors.getAllowedMethods());
+        configuration.setAllowedHeaders(cors.getAllowedHeaders());
+        configuration.setExposedHeaders(cors.getExposedHeaders());
+        configuration.setAllowCredentials(cors.isAllowCredentials());
+        if (cors.getMaxAge() != null) {
+            configuration.setMaxAge(cors.getMaxAge().getSeconds());
+        }
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     private void applyDynamicRbacDefaults(SecurityProperties securityProperties) {

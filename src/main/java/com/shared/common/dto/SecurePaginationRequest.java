@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -49,6 +50,9 @@ public class SecurePaginationRequest {
         }
         if (sortDir != null && !("asc".equalsIgnoreCase(sortDir) || "desc".equalsIgnoreCase(sortDir))) {
             throw new IllegalArgumentException("Sort direction must be 'asc' or 'desc'");
+        }
+        if (fileId != null && !fileId.trim().isEmpty() && !fileId.trim().matches("\\d+")) {
+            throw new IllegalArgumentException("fileId must be a numeric value");
         }
     }
     // Whitelist of allowed sortBy aliases and their DB columns
@@ -95,6 +99,10 @@ public class SecurePaginationRequest {
     @Schema(description = "Receipt status filter", example = "PENDING")
     private String status;
 
+    @Schema(description = "Optional filter to limit results to a single uploaded file", example = "42")
+    @JsonAlias("file_id")
+    private String fileId;
+
     public String getStatus() {
         return status;
     }
@@ -109,6 +117,14 @@ public class SecurePaginationRequest {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getFileId() {
+        return fileId;
+    }
+
+    public void setFileId(String fileId) {
+        this.fileId = fileId;
     }
 
     // Constructors
@@ -198,6 +214,7 @@ public class SecurePaginationRequest {
                 "startDate='" + startDate + '\'' +
                 ", endDate='" + endDate + '\'' +
                 ", status='" + status + '\'' +
+                ", fileId='" + fileId + '\'' +
                 ", size=" + size +
                 ", sortBy='" + sortBy + '\'' +
                 ", sortDir='" + sortDir + '\'' +

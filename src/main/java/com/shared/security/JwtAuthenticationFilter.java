@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -20,7 +21,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -40,6 +43,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             jwtConfig.getSecret() != null ? jwtConfig.getSecret().length() : "null",
             jwtConfig.getIssuer(),
             jwtConfig.getAudience());
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return HttpMethod.OPTIONS.matches(request.getMethod());
     }
 
     @Override
@@ -105,6 +113,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private void authenticateWithClaims(HttpServletRequest request, String jwt) {
         Claims claims = getClaims(jwt);
+        assertAudienceAllowed(claims);
         String username = claims.getSubject();
         UsernamePasswordAuthenticationToken authentication =
             new UsernamePasswordAuthenticationToken(username, null, Collections.emptyList());
@@ -114,7 +123,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private boolean validateToken(String token) {
         try {
-            getClaims(token);
+            Claims claims = getClaims(token);
+            assertAudienceAllowed(claims);
             return true;
         } catch (Exception ex) {
             log.debug("JWT validation error: {}", ex.getMessage());
@@ -126,10 +136,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return Jwts.parser()
             .verifyWith(getSecretSigningKey())
             .requireIssuer(jwtConfig.getIssuer())
-            .requireAudience(jwtConfig.getAudience())
             .build()
             .parseSignedClaims(token)
             .getPayload();
+    }
+
+    private void assertAudienceAllowed(Claims claims) {
+        List<String> allowed = jwtConfig.getAllowedAudiences();
+        if (allowed.isEmpty()) {
+            throw new IllegalStateException("JWT audience is not configured");
+        }
+
+        Object audClaim = claims.getAudience();
+        if (audClaim instanceof String audString) {
+            if (allowed.stream().noneMatch(a -> a.equalsIgnoreCase(audString))) {
+                throw new IllegalArgumentException("JWT audience not allowed: " + audString);
+            }
+            return;
+        }
+
+        if (audClaim instanceof Collection<?> collection) {
+            for (Object entry : collection) {
+                if (entry instanceof String audEntry &&
+                    allowed.stream().anyMatch(a -> a.equalsIgnoreCase(audEntry))) {
+                    return;
+                }
+            }
+            throw new IllegalArgumentException("JWT audience list not allowed");
+        }
+
+        throw new IllegalArgumentException("JWT audience missing or invalid");
     }
 
     private static javax.crypto.SecretKey getSecretSigningKey(String secret) {
